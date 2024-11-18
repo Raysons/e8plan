@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Team Cost & Savings Calculator</title>
+    <style>
+        /* CSS */
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .container {
+            width: 500px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        label,
+        p {
+            color: #555;
+        }
+        
+        select,
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #E6AD2A;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #E6AD2A;
+        }
+        
+        #results {
+            margin-top: 20px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .result-item {
+            margin: 5px 0;
+            font-size: 18px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .step {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Team Cost & Savings Calculator</h1>
+        <form id="calculatorForm" onsubmit="return prepareData()">
+            <!-- Step 1: Package Selection -->
+            <div id="step1" class="step">
+                <label for="packageSelect">Select Package:</label>
+                <select id="packageSelect" onchange="nextStep()">
+                <option value="">Select a package</option>
+                <option value="bookkeeping">Elev8 Bookkeeping Package</option>
+                <option value="marketing">Elev8 Marketing/Automation & Sales Package</option>
+                <option value="both">Both Packages</option>
+            </select>
+            </div>
+
+            <!-- Step 2: Tier Selection -->
+            <div id="step2" class="step hidden">
+                <label for="tierSelect">Select Tier:</label>
+                <select id="tierSelect" onchange="nextStep()">
+                <option value="">Select a tier</option>
+            </select>
+            </div>
+
+            <!-- Step 3: Employee Counts -->
+            <div id="step3" class="step hidden">
+                <div id="questions">
+                    <div id="bookkeeperField" class="hidden">
+                        <label for="numBookkeepers">Number of In-house Accountants/Bookkeepers:</label>
+                        <input type="number" id="numBookkeepers" min="0" placeholder="Enter number of Bookkeepers">
+                    </div>
+
+                    <div id="marketingField" class="hidden">
+                        <label for="numMarketing">Number of In-house Marketing Employees:</label>
+                        <input type="number" id="numMarketing" min="0" placeholder="Enter number of Marketing Employees">
+                    </div>
+
+                    <div id="automationField" class="hidden">
+                        <label for="numAutomation">Number of In-house Automation Employees:</label>
+                        <input type="number" id="numAutomation" min="0" placeholder="Enter number of Automation Employees">
+                    </div>
+
+                    <div id="salesField" class="hidden">
+                        <label for="numSales">Number of In-house Sales Employees:</label>
+                        <input type="number" id="numSales" min="0" placeholder="Enter number of Sales Employees">
+                    </div>
+                </div>
+                <button onclick="calculate()">Calculate</button>
+            </div>
+
+            <!-- Results -->
+            <div id="results" class="hidden">
+                <h2>Results:</h2>
+                <p class="result-item" id="overheadCost"></p>
+                <p class="result-item" id="totalCost"></p>
+                <p class="result-item" id="costSavings"></p>
+                <p class="result-item" id="roi"></p>
+                <p class="result-item" id="efficiencyGains"></p>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // JavaScript
+        const packageOptions = {
+            bookkeeping: [{
+                tier: "Tier 1",
+                price: 400
+            }, {
+                tier: "Tier 2",
+                price: 2000
+            }, {
+                tier: "Tier 3",
+                price: 4500
+            }],
+            marketing: [{
+                tier: "Tier 1",
+                price: 5997
+            }, {
+                tier: "Tier 2",
+                price: 12997
+            }, {
+                tier: "Tier 3",
+                price: 19997
+            }],
+            both: [{
+                tier: "Tier 1",
+                price: 6397
+            }, {
+                tier: "Tier 2",
+                price: 14997
+            }, {
+                tier: "Tier 3",
+                price: 23997
+            }]
+        };
+
+        const departments = [{
+            name: "Bookkeeper",
+            baseSalary: 3596.80,
+            inputId: "numBookkeepers"
+        }, {
+            name: "Marketing",
+            baseSalary: 8950.33,
+            inputId: "numMarketing"
+        }, {
+            name: "Automation",
+            baseSalary: 8312.50,
+            inputId: "numAutomation"
+        }, {
+            name: "Sales",
+            baseSalary: 6558.83,
+            inputId: "numSales"
+        }];
+
+        const adExpenses = [{
+            employees: 0,
+            expense: 3000.00
+        }, {
+            employees: 6,
+            expense: 7500.00
+        }, {
+            employees: 26,
+            expense: 12000.00
+        }];
+
+        let currentStep = 1;
+
+        function nextStep() {
+            document.getElementById(`step${currentStep}`).classList.add("hidden");
+            currentStep += 1;
+            document.getElementById(`step${currentStep}`).classList.remove("hidden");
+
+            if (currentStep === 2) updateTiers();
+            if (currentStep === 3) updateQuestions();
+        }
+
+        function updateTiers() {
+            const packageSelect = document.getElementById("packageSelect").value;
+            const tierSelect = document.getElementById("tierSelect");
+            tierSelect.innerHTML = '<option value="">Select a tier</option>';
+
+            if (packageSelect) {
+                packageOptions[packageSelect].forEach(option => {
+                    const optionElement = document.createElement("option");
+                    optionElement.value = option.price;
+                    optionElement.textContent = `${option.tier} - $${option.price}`;
+                    tierSelect.appendChild(optionElement);
+                });
+            }
+        }
+
+        function updateQuestions() {
+            const packageSelect = document.getElementById("packageSelect").value;
+            document.getElementById("bookkeeperField").classList.toggle("hidden", packageSelect !== "bookkeeping" && packageSelect !== "both");
+            document.getElementById("marketingField").classList.toggle("hidden", packageSelect === "bookkeeping");
+            document.getElementById("automationField").classList.toggle("hidden", packageSelect === "bookkeeping");
+            document.getElementById("salesField").classList.toggle("hidden", packageSelect === "bookkeeping");
+        }
+
+        function calculate() {
+            let totalEmployees = 0;
+            let totalMonthlySalary = 0;
+
+            departments.forEach(dept => {
+                const numEmployees = parseInt(document.getElementById(dept.inputId).value) || 0;
+                totalEmployees += numEmployees;
+                totalMonthlySalary += dept.baseSalary * numEmployees;
+            });
+
+            const adExpense = adExpenses.reduce((acc, curr) => totalEmployees >= curr.employees ? curr.expense : acc, adExpenses[0].expense);
+            const overheadCost = (totalMonthlySalary * 0.5).toFixed(2);
+            const totalCost = (totalMonthlySalary + parseFloat(overheadCost) + adExpense).toFixed(2);
+
+            const tierPrice = parseFloat(document.getElementById("tierSelect").value);
+            const costSavings = (totalCost - tierPrice).toFixed(2);
+            const roi = ((costSavings / tierPrice) * 100).toFixed(2);
+            const efficiencyGains = (costSavings * 0.3).toFixed(2);
+
+            document.getElementById("overheadCost").textContent = `Overhead Costs: $${overheadCost}`;
+            document.getElementById("totalCost").textContent = `Total In-House Cost: $${totalCost}`;
+            document.getElementById("costSavings").textContent = `Cost Savings: $${costSavings}`;
+            document.getElementById("roi").textContent = `ROI: ${roi}%`;
+            document.getElementById("efficiencyGains").textContent = `Efficiency Gains: $${efficiencyGains}`;
+
+            document.getElementById("results").classList.remove("hidden");
+        }
+    </script>
+    <script>
+        function prepareData() {
+            const packageSelect = document.getElementById("packageSelect").value;
+            const tierSelect = document.getElementById("tierSelect").value;
+            const numBookkeepers = document.getElementById("numBookkeepers").value || 0;
+            const numMarketing = document.getElementById("numMarketing").value || 0;
+
+            if (!packageSelect || !tierSelect) {
+                alert("Please select both a package and a tier.");
+                return false;
+            }
+
+            const queryParams = new URLSearchParams({
+                package: packageSelect,
+                tier: tierSelect,
+                numBookkeepers,
+                numMarketing,
+            });
+
+            // Redirect to results.html with query params
+            window.location.href = `slider.html?${queryParams.toString()}`;
+            return false; // Prevent actual form submission
+        }
+    </script>
+</body>
+
+</html>
